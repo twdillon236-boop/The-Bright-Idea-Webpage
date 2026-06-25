@@ -165,15 +165,40 @@ interface FetchResult {
 /**
  * Fetches a single page with a per-page timeout.
  * Returns null on any error (network, timeout, non-200, non-HTML).
+ *
+ * Applies SSRF protection on every call: only http/https URLs pointing to
+ * public hosts are allowed, regardless of how this function is called.
  */
 async function fetchPage(url: string): Promise<FetchResult | null> {
+  // ── SSRF guard ────────────────────────────────────────────────────────────
+  // Validate every URL immediately before making an outbound request.
+  // We reconstruct the URL from the parsed object so that fetch() receives
+  // a value that is demonstrably derived from validated components rather
+  // than the raw user-supplied string.
+  let safeUrl: string;
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
+    if (isPrivateOrReservedHost(parsed.hostname)) return null;
+    // Use parsed.href: a normalised string reconstructed by the URL parser
+    safeUrl = parsed.href;
+  } catch {
+    return null;
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), PAGE_TIMEOUT_MS);
 
     let response: Response;
     try {
-      response = await fetch(url, {
+      // lgtm[js/request-forgery] - Intentional: this is a web crawler that fetches
+      // user-supplied URLs. SSRF is mitigated above by isPrivateOrReservedHost()
+      // (blocking all private/loopback/reserved IP ranges and .local/.internal TLDs)
+      // and by restricting protocols to http/https only. safeUrl is reconstructed
+      // from parsed.href after those checks rather than used as-is from user input.
+      response = await fetch(safeUrl, {
         signal: controller.signal,
         headers: {
           "User-Agent":
