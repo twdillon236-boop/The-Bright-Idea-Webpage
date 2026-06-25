@@ -58,10 +58,12 @@ export function BusinessForm({ mode, onComplete }: BusinessFormProps) {
   const [formData, setFormData] = useState<BusinessIntakePayload>(initialState);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [crawlWarning, setCrawlWarning] = useState("");
 
   const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError("");
+    setCrawlWarning("");
     setIsSubmitting(true);
 
     try {
@@ -80,6 +82,11 @@ export function BusinessForm({ mode, onComplete }: BusinessFormProps) {
       if (!data.analysis) {
         setError(unavailableMessage);
         return;
+      }
+
+      // Surface a non-blocking warning if the website could not be crawled
+      if (data.crawlWarning) {
+        setCrawlWarning(`Website crawl note: ${data.crawlWarning} The report was generated from your form answers.`);
       }
 
       onComplete(data.analysis);
@@ -117,13 +124,14 @@ export function BusinessForm({ mode, onComplete }: BusinessFormProps) {
       </div>
 
       {error ? <p className="text-sm font-medium text-rose-300">{error}</p> : null}
+      {crawlWarning ? <p className="text-sm font-medium text-amber-300">{crawlWarning}</p> : null}
 
       <button
         type="submit"
         disabled={isSubmitting}
         className="rounded-xl bg-violet-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-violet-400 disabled:cursor-not-allowed disabled:opacity-70"
       >
-        {isSubmitting ? "Analyzing..." : "Analyze My Business"}
+        {isSubmitting ? "Crawling website and analyzing…" : "Analyze My Business"}
       </button>
     </form>
   );

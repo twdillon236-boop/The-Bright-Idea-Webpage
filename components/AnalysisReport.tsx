@@ -11,6 +11,7 @@ const sectionTitles = [
   "Long-Term Strategy",
   "Follow-Up Questions",
   "Final Consultant Notes",
+  "Website Findings",
 ] as const;
 
 function sectionContent(report: string, title: string) {
